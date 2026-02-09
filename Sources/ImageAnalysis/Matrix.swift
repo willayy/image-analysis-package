@@ -6,6 +6,7 @@
 //
 
 import ImageIO
+import Foundation
 
 public class Matrix<T: Numeric, D: Numeric> {
     let rows: D
@@ -32,8 +33,18 @@ public class IdMatrix<T: Numeric, D: Numeric>: Matrix<T, D> {
     
 }
 
-
-public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [CGImage]) -> [IdMatrix<T, D>] {
-    // TODO - Implementent
-    return []
+public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, String)]) throws -> [IdMatrix<T, D>] {
+    for (image,id) in cgImages {
+        let rows = image.height
+        let columns = image.width
+        guard let colorSpace = image.colorSpace else { continue }
+        if colorSpace.model != .monochrome {
+            throw NSError(domain: "ImageAnalysis", code: 2001, userInfo: [NSLocalizedDescriptionKey : "All input images must be in grayscale."])
+        }
+        guard let dataProvider = image.dataProvider else { continue }
+        guard let data = dataProvider.data else { continue }
+        let bufferLength = CFDataGetLength(data)
+        let dataBuffer = CFDataGetBytePtr(data)
+        
+    }
 }

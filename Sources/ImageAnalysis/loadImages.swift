@@ -9,7 +9,7 @@ import Foundation
 import ImageIO
 
 @available(macOS 13.0, *)
-public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) -> [CGImage] {
+public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) throws -> [CGImage] {
     
     // Start a file manager
     let fileManager = FileManager.default
@@ -23,7 +23,7 @@ public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) -> [CGImage
     
     // from is inclusive to is inclusive
     if (fromIndex < 0 || toIndex > fileURLs.count || fromIndex > toIndex) {
-        fatalError("Bad indices provided \(fromIndex), \(toIndex)")
+        throw NSError(domain: "ImageAnalysis", code: 1001, userInfo: [NSLocalizedDescriptionKey : "Bad indices provided \(fromIndex), \(toIndex)"])
     }
     
     // Define batch
@@ -33,17 +33,17 @@ public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) -> [CGImage
     let options = [kCGImageSourceShouldCache: false] as CFDictionary
     
     // Load batch
-    let imageBatch = urlBatch.compactMap { imagePath -> CGImage? in
+    let imageBatch = try urlBatch.compactMap { imagePath -> CGImage? in
         
         let imageURL = from.appending(path: imagePath)
         
         guard let source = CGImageSourceCreateWithURL(imageURL as CFURL, options) else {
-                fatalError("Failed to create image source for: \(imageURL)")
+            throw NSError(domain: "ImageAnalysis", code: 1002, userInfo: [NSLocalizedDescriptionKey : "Failed to create image source for: \(imageURL)"])
         }
         guard let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
-            fatalError("Failed to decode image at index 0")
+            throw NSError(domain: "ImageAnalysis", code: 1003, userInfo: [NSLocalizedDescriptionKey : "Failed to decode image at index 0 for: \(imageURL)"])
         }
-        
+
         return image
     }
     
