@@ -54,7 +54,7 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
 }
 
 // Helper function to convert CGImage to IdMatrix for testing
-func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix<Float, Int>? {
+private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix<Float, Int>? {
     let width = cgImage.width
     let height = cgImage.height
     

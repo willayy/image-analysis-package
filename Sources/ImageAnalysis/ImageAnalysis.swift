@@ -202,10 +202,12 @@ private func calculateImageSimilarity(_ img1: IdMatrix<Float, Int>, _ img2: IdMa
     )
     mse = mse / Float(pixelCount)
     
-    // Normalize MSE to similarity score (assuming pixel values are 0-255 or 0-1)
-    // For normalized images (0-1), MSE of 0.01 is quite different
+    // Normalize MSE to similarity score (assuming pixel values are 0-1)
     // We use exponential decay to convert MSE to similarity
-    let structuralSimilarity = exp(-mse * 10.0)
+    // The scaling factor of 10.0 was chosen empirically: it maps MSE of 0.1 to ~37% similarity,
+    // and MSE of 0.3 to ~5% similarity, which provides good discrimination for normalized images
+    let mseScalingFactor: Float = 10.0
+    let structuralSimilarity = exp(-mse * mseScalingFactor)
     
     // Combine both metrics (weighted average)
     let combinedSimilarity = 0.6 * histogramSimilarity + 0.4 * structuralSimilarity
@@ -305,7 +307,7 @@ private func compareHistograms(_ data1: [Float], _ data2: [Float], count: Int) -
 public func groupDuplicateImages(images: [IdMatrix<Float, Int>], threshold: Float = 0.95) -> [[IdMatrix<Float, Int>]] {
     
     guard images.count >= 2 else {
-        return images.count == 1 ? [images] : []
+        return []
     }
     
     // Find all duplicate pairs above threshold
