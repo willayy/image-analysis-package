@@ -100,12 +100,12 @@ private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix
     let blurredImages = try batchLoadImages(
         from: blurredImageFolderURL,
         fromIndex: 0,
-        toIndex: 1  // Load just 2 images
+        toIndex: 1  // Load 2 images (indices 0-1)
     )
     let sharpImages = try batchLoadImages(
         from: sharpImageFolderURL,
         fromIndex: 0,
-        toIndex: 1  // Load just 2 images
+        toIndex: 1  // Load 2 images (indices 0-1)
     )
     
     // Convert to IdMatrix

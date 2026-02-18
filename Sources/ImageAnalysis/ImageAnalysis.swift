@@ -277,7 +277,9 @@ private func compareHistograms(_ data1: [Float], _ data2: [Float], count: Int) -
         // Normalize to [0, 1] range from [-1, 1] range
         correlation = (correlation + 1.0) / 2.0
     } else {
-        correlation = 1.0 // If both histograms are uniform, consider them similar
+        // If one or both histograms have near-zero variance (nearly uniform),
+        // we can't compute correlation, so default to high similarity
+        correlation = 1.0
     }
     
     return min(max(correlation, 0.0), 1.0)
