@@ -55,14 +55,15 @@ public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, 
         }
         guard let dataProvider = image.dataProvider else { continue }
         guard let data = dataProvider.data else { continue }
-        let bufferLength = CFDataGetLength(data)
         guard let dataBuffer = CFDataGetBytePtr(data) else { continue }
         
         // Extract pixel data from the buffer
         var pixelData: [T] = []
-        pixelData.reserveCapacity(rows * columns)
+        let pixelCount = rows * columns
+        pixelData.reserveCapacity(pixelCount)
         
-        for i in 0..<bufferLength {
+        // Only iterate through actual pixel data, not padding bytes
+        for i in 0..<pixelCount {
             let pixelValue = dataBuffer[i]
             // Convert UInt8 pixel value to generic numeric type T
             guard let numericValue = T.init(exactly: pixelValue) else {
