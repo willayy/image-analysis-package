@@ -5,8 +5,11 @@
 //  Created by William Norland on 2026-01-25.
 //
 
+#if canImport(Accelerate)
 import Accelerate
+#endif
 
+#if canImport(Accelerate)
 public func laplacianVariance(images: [IdMatrix<Float, Int>]) -> [(IdMatrix<Float, Int>, Float)] {
     
     // Laplacian kernel df/dx^2 + df/dy^2
@@ -91,6 +94,7 @@ public func laplacianVariance(images: [IdMatrix<Float, Int>]) -> [(IdMatrix<Floa
     
     return scores
 }
+#endif
 
 /// Analyzes the darkness of an image by calculating the average pixel brightness.
 ///
