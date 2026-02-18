@@ -70,8 +70,11 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
         return
     }
     
-    // Test single image brightness
-    let brightness = try imageBrightness(image: testImage)
+    // Test single image brightness using batch function
+    let results = imageBrightness(images: [testImage])
+    
+    #expect(results.count == 1)
+    let (_, brightness) = results[0]
     
     // Brightness should be between 0.0 and 1.0
     #expect(brightness >= 0.0 && brightness <= 1.0)
@@ -109,8 +112,8 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
     }
     
     // Test batch processing
-    let blurResults = try imageBrightness(images: blurImages)
-    let sharpResults = try imageBrightness(images: sharpImages)
+    let blurResults = imageBrightness(images: blurImages)
+    let sharpResults = imageBrightness(images: sharpImages)
     
     // Check that we get results for all images
     #expect(blurResults.count == blurImages.count)
@@ -144,10 +147,10 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
     }
     
     // Test that analyzing the same image multiple times gives same result
-    let brightness1 = try imageBrightness(image: testImage)
-    let brightness2 = try imageBrightness(image: testImage)
+    let results1 = imageBrightness(images: [testImage])
+    let results2 = imageBrightness(images: [testImage])
     
-    #expect(brightness1 == brightness2)
+    #expect(results1[0].1 == results2[0].1)
 }
 
 @Test func convertImages
