@@ -49,6 +49,7 @@ public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, 
     for (image, id) in cgImages {
         let rows = image.height
         let columns = image.width
+        let bytesPerRow = image.bytesPerRow
         
         guard let colorSpace = image.colorSpace else {
             throw NSError(domain: "ImageAnalysis", code: 2003, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' is missing color space information."])
@@ -66,19 +67,22 @@ public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, 
             throw NSError(domain: "ImageAnalysis", code: 2006, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' could not get data buffer pointer."])
         }
         
-        // Extract pixel data from the buffer
+        // Extract pixel data from the buffer, accounting for row padding
         var pixelData: [T] = []
         let pixelCount = rows * columns
         pixelData.reserveCapacity(pixelCount)
         
-        // Only iterate through actual pixel data, not padding bytes
-        for i in 0..<pixelCount {
-            let pixelValue = dataBuffer[i]
-            // Convert UInt8 pixel value to generic numeric type T
-            guard let numericValue = T.init(exactly: pixelValue) else {
-                throw NSError(domain: "ImageAnalysis", code: 2002, userInfo: [NSLocalizedDescriptionKey: "Failed to convert pixel value to target numeric type."])
+        // Iterate through each row and column, using bytesPerRow to handle padding
+        for row in 0..<rows {
+            for col in 0..<columns {
+                let index = row * bytesPerRow + col
+                let pixelValue = dataBuffer[index]
+                // Convert UInt8 pixel value to generic numeric type T
+                guard let numericValue = T.init(exactly: pixelValue) else {
+                    throw NSError(domain: "ImageAnalysis", code: 2002, userInfo: [NSLocalizedDescriptionKey: "Failed to convert pixel value to target numeric type."])
+                }
+                pixelData.append(numericValue)
             }
-            pixelData.append(numericValue)
         }
         
         // Create IdMatrix with the extracted data
