@@ -40,7 +40,7 @@ public class IdMatrix<T: Numeric, D: Numeric>: Matrix<T, D> {
 ///
 /// - Parameter cgImages: An array of tuples containing CGImage objects and their identifier strings
 /// - Returns: An array of IdMatrix objects, where each matrix contains the pixel data from the corresponding image
-/// - Throws: An error if any image is not in monochrome/grayscale color space
+/// - Throws: An error if any image is not in monochrome/grayscale color space, missing required data, or has invalid dimensions
 ///
 /// - Note: The pixel data is extracted row by row and stored in the matrix's data array
 public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, String)]) throws -> [IdMatrix<T, D>] {
@@ -49,13 +49,22 @@ public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, 
     for (image, id) in cgImages {
         let rows = image.height
         let columns = image.width
-        guard let colorSpace = image.colorSpace else { continue }
+        
+        guard let colorSpace = image.colorSpace else {
+            throw NSError(domain: "ImageAnalysis", code: 2003, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' is missing color space information."])
+        }
         if colorSpace.model != .monochrome {
             throw NSError(domain: "ImageAnalysis", code: 2001, userInfo: [NSLocalizedDescriptionKey : "All input images must be in grayscale."])
         }
-        guard let dataProvider = image.dataProvider else { continue }
-        guard let data = dataProvider.data else { continue }
-        guard let dataBuffer = CFDataGetBytePtr(data) else { continue }
+        guard let dataProvider = image.dataProvider else {
+            throw NSError(domain: "ImageAnalysis", code: 2004, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' is missing data provider."])
+        }
+        guard let data = dataProvider.data else {
+            throw NSError(domain: "ImageAnalysis", code: 2005, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' data provider has no data."])
+        }
+        guard let dataBuffer = CFDataGetBytePtr(data) else {
+            throw NSError(domain: "ImageAnalysis", code: 2006, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' could not get data buffer pointer."])
+        }
         
         // Extract pixel data from the buffer
         var pixelData: [T] = []
@@ -74,7 +83,7 @@ public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, 
         
         // Create IdMatrix with the extracted data
         guard let rowsD = D.init(exactly: rows), let columnsD = D.init(exactly: columns) else {
-            continue
+            throw NSError(domain: "ImageAnalysis", code: 2007, userInfo: [NSLocalizedDescriptionKey: "Image '\(id)' dimensions (\(rows)x\(columns)) cannot be converted to target dimension type."])
         }
         let matrix = IdMatrix(rowsD, columnsD, pixelData, id)
         matrices.append(matrix)

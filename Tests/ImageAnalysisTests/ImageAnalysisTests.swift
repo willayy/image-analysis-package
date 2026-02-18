@@ -55,17 +55,22 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
 
 @Test func testConvertImages() async throws {
     // Ensure images are loaded first by calling testLoadImages
-    guard let blurred = blurredImages, let sharp = sharpImages else {
+    if blurredImages == nil || sharpImages == nil {
         // If images aren't loaded yet, load them
         try await testLoadImages()
     }
     
+    // At this point, images should be loaded
+    guard let blurred = blurredImages, let sharp = sharpImages else {
+        throw NSError(domain: "ImageAnalysisTests", code: 3001, userInfo: [NSLocalizedDescriptionKey: "Failed to load test images"])
+    }
+    
     // Prepare images with identifiers for conversion
     var imagesToConvert: [(CGImage, String)] = []
-    for (index, image) in (blurredImages ?? []).enumerated() {
+    for (index, image) in blurred.enumerated() {
         imagesToConvert.append((image, "blurred_\(index)"))
     }
-    for (index, image) in (sharpImages ?? []).enumerated() {
+    for (index, image) in sharp.enumerated() {
         imagesToConvert.append((image, "sharp_\(index)"))
     }
     
