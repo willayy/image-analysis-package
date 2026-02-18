@@ -7,9 +7,7 @@
 
 #if canImport(Accelerate)
 import Accelerate
-#endif
 
-#if canImport(Accelerate)
 public func laplacianVariance(images: [IdMatrix<Float, Int>]) -> [(IdMatrix<Float, Int>, Float)] {
     
     // Laplacian kernel df/dx^2 + df/dy^2
