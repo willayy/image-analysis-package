@@ -140,11 +140,14 @@ public func imageBrightness(images: [CGImage]) -> [(CGImage, Float)] {
         let height = image.height
         let totalPixels = width * height
         
+        // Validate image and check buffer capacity
         guard totalPixels > 0,
+              totalPixels <= maxPixels,
               let dataProvider = image.dataProvider,
               let pixelData = dataProvider.data,
               let data = CFDataGetBytePtr(pixelData) else {
-            // Skip invalid images
+            // Return 0.0 for invalid images or images exceeding buffer capacity
+            // Note: 0.0 indicates both completely dark and invalid/skipped images
             results.append((image, 0.0))
             continue
         }

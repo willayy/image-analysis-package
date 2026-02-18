@@ -150,7 +150,10 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
     let results1 = imageBrightness(images: [testImage])
     let results2 = imageBrightness(images: [testImage])
     
-    #expect(results1[0].1 == results2[0].1)
+    let (_, brightness1) = results1[0]
+    let (_, brightness2) = results2[0]
+    
+    #expect(brightness1 == brightness2)
 }
 
 @Test func convertImages
