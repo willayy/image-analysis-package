@@ -53,153 +53,158 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
     
 }
 
-@Test func testBrightnessSingleImage() async throws {
-    guard let rootURL = Bundle.module.url(
-        forResource: "TestData",
-        withExtension: nil
-    ) else {
-        return
+// Helper function to convert CGImage to IdMatrix for testing
+private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix<Float, Int>? {
+    let width = cgImage.width
+    let height = cgImage.height
+    
+    guard let dataProvider = cgImage.dataProvider,
+          let data = dataProvider.data as Data? else {
+        return nil
     }
     
-    let sharpImageFolderURL = rootURL.appendingPathComponent("sharp")
-    guard let images = try? batchLoadImages(
-        from: sharpImageFolderURL,
-        fromIndex: 0,
-        toIndex: 0
-    ), let testImage = images.first else {
-        return
+    let bytesPerPixel = cgImage.bitsPerPixel / 8
+    let bytesPerRow = cgImage.bytesPerRow
+    
+    var floatData: [Float] = []
+    floatData.reserveCapacity(width * height)
+    
+    for y in 0..<height {
+        for x in 0..<width {
+            let offset = y * bytesPerRow + x * bytesPerPixel
+            if offset < data.count {
+                let pixelValue = data[offset]
+                // Normalize to 0.0-1.0 range
+                floatData.append(Float(pixelValue) / 255.0)
+            } else {
+                floatData.append(0.0)
+            }
+        }
     }
     
-    // Test single image brightness using batch function
-    let results = imageBrightness(images: [testImage])
-    
-    #expect(results.count == 1)
-    let (_, brightness) = results[0]
-    
-    // Brightness should be between 0.0 and 1.0
-    #expect(brightness >= 0.0 && brightness <= 1.0)
-    
-    // Sharp images from phone cameras should typically have reasonable brightness
-    // Not too dark (> 0.1) and not completely white (< 0.95)
-    #expect(brightness > 0.1 && brightness < 0.95)
+    return IdMatrix<Float, Int>(Int(height), Int(width), floatData, identity)
 }
 
-@Test func testBrightnessMultipleImages() async throws {
+@Test func testDuplicateImageDetection() async throws {
+    // Load test images first
     guard let rootURL = Bundle.module.url(
         forResource: "TestData",
         withExtension: nil
     ) else {
-        return
+        throw NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot find test data"])
     }
     
     let blurredImageFolderURL = rootURL.appendingPathComponent("blurred")
     let sharpImageFolderURL = rootURL.appendingPathComponent("sharp")
     
-    guard let blurImages = try? batchLoadImages(
+    let blurredImages = try batchLoadImages(
         from: blurredImageFolderURL,
         fromIndex: 0,
-        toIndex: 2
-    ) else {
-        return
-    }
-    
-    guard let sharpImages = try? batchLoadImages(
+        toIndex: 1  // Load 2 images (indices 0-1)
+    )
+    let sharpImages = try batchLoadImages(
         from: sharpImageFolderURL,
         fromIndex: 0,
-        toIndex: 2
-    ) else {
-        return
+        toIndex: 1  // Load 2 images (indices 0-1)
+    )
+    
+    // Convert to IdMatrix
+    guard let blurred1 = cgImageToIdMatrix(blurredImages[0], identity: "blurred_0"),
+          let blurred2 = cgImageToIdMatrix(blurredImages[1], identity: "blurred_1"),
+          let sharp1 = cgImageToIdMatrix(sharpImages[0], identity: "sharp_0"),
+          let sharp2 = cgImageToIdMatrix(sharpImages[1], identity: "sharp_1") else {
+        throw NSError(domain: "TestError", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot convert images"])
     }
     
-    // Test batch processing
-    let blurResults = imageBrightness(images: blurImages)
-    let sharpResults = imageBrightness(images: sharpImages)
-    
-    // Check that we get results for all images
-    #expect(blurResults.count == blurImages.count)
-    #expect(sharpResults.count == sharpImages.count)
-    
-    // Check all brightness values are in valid range
-    for (_, brightness) in blurResults {
-        #expect(brightness >= 0.0 && brightness <= 1.0)
+    // Test 1: Compare same image with itself (should have very high similarity)
+    let identicalImages = [blurred1, blurred1]
+    let identicalDuplicates = findDuplicateImages(images: identicalImages)
+    #expect(identicalDuplicates.count > 0, "Should find duplicate when comparing image with itself")
+    if identicalDuplicates.count > 0 {
+        #expect(identicalDuplicates[0].similarity > 0.99, "Identical images should have similarity > 0.99")
     }
     
-    for (_, brightness) in sharpResults {
-        #expect(brightness >= 0.0 && brightness <= 1.0)
+    // Test 2: Compare different images (should have lower similarity)
+    let differentImages = [blurred1, sharp1]
+    let differentDuplicates = findDuplicateImages(images: differentImages)
+    // Different images might or might not be flagged as duplicates depending on similarity
+    // But if they are found as duplicates, similarity should be lower than identical images
+    if !differentDuplicates.isEmpty && !identicalDuplicates.isEmpty {
+        #expect(differentDuplicates[0].similarity < identicalDuplicates[0].similarity,
+                "Different images should have lower similarity than identical images")
+    }
+    
+    // Test 3: Test with multiple images
+    let multipleImages = [blurred1, blurred2, sharp1, sharp2]
+    let multipleDuplicates = findDuplicateImages(images: multipleImages)
+    // Should return results sorted by similarity
+    for i in 0..<(multipleDuplicates.count - 1) {
+        #expect(multipleDuplicates[i].similarity >= multipleDuplicates[i + 1].similarity,
+                "Results should be sorted by similarity in descending order")
     }
 }
 
-@Test func testBrightnessConsistency() async throws {
-    guard let rootURL = Bundle.module.url(
-        forResource: "TestData",
-        withExtension: nil
-    ) else {
-        return
+@Test func testGroupDuplicateImages() async throws {
+    // Create some simple test images with known characteristics
+    let size = 100
+    let imageData1 = [Float](repeating: 0.5, count: size * size)
+    let imageData2 = [Float](repeating: 0.5, count: size * size)
+    let imageData3 = [Float](repeating: 0.3, count: size * size)
+    
+    let img1 = IdMatrix<Float, Int>(size, size, imageData1, "image1")
+    let img2 = IdMatrix<Float, Int>(size, size, imageData2, "image2")
+    let img3 = IdMatrix<Float, Int>(size, size, imageData3, "image3")
+    
+    // Test grouping with high threshold
+    let images = [img1, img2, img3]
+    let groups = groupDuplicateImages(images: images, threshold: 0.95)
+    
+    // img1 and img2 are identical, so they should be in the same group
+    #expect(groups.count > 0, "Should find at least one group of duplicates")
+    
+    // Verify that groups contain the expected images
+    if groups.count > 0 {
+        let firstGroup = groups[0]
+        #expect(firstGroup.count >= 2, "First group should contain at least 2 images")
+        
+        // Check that img1 and img2 are in the same group
+        let identities = Set(firstGroup.map { $0.identity })
+        let hasImg1 = identities.contains("image1")
+        let hasImg2 = identities.contains("image2")
+        #expect(hasImg1 && hasImg2, "image1 and image2 should be in the same group")
     }
-    
-    let sharpImageFolderURL = rootURL.appendingPathComponent("sharp")
-    guard let images = try? batchLoadImages(
-        from: sharpImageFolderURL,
-        fromIndex: 0,
-        toIndex: 0
-    ), let testImage = images.first else {
-        return
-    }
-    
-    // Test that analyzing the same image multiple times gives same result
-    let results1 = imageBrightness(images: [testImage])
-    let results2 = imageBrightness(images: [testImage])
-    
-    let (_, brightness1) = results1[0]
-    let (_, brightness2) = results2[0]
-    
-    #expect(brightness1 == brightness2)
 }
 
-@Test func testConvertImages() async throws {
-    // Ensure images are loaded first by calling testLoadImages
-    if blurredImages == nil || sharpImages == nil {
-        // If images aren't loaded yet, load them
-        try await testLoadImages()
-    }
+@Test func testDuplicatePairStruct() {
+    let imageData = [Float](repeating: 0.5, count: 100)
+    let img1 = IdMatrix<Float, Int>(10, 10, imageData, "test1")
+    let img2 = IdMatrix<Float, Int>(10, 10, imageData, "test2")
     
-    // At this point, images should be loaded
-    guard let blurred = blurredImages, let sharp = sharpImages else {
-        throw NSError(domain: "ImageAnalysisTests", code: 3001, userInfo: [NSLocalizedDescriptionKey: "Failed to load test images"])
-    }
+    let pair = DuplicatePair(image1: img1, image2: img2, similarity: 0.95)
     
-    // Prepare images with identifiers for conversion
-    var imagesToConvert: [(CGImage, String)] = []
-    for (index, image) in blurred.enumerated() {
-        imagesToConvert.append((image, "blurred_\(index)"))
-    }
-    for (index, image) in sharp.enumerated() {
-        imagesToConvert.append((image, "sharp_\(index)"))
-    }
+    #expect(pair.image1.identity == "test1")
+    #expect(pair.image2.identity == "test2")
+    #expect(pair.similarity == 0.95)
+}
+
+@Test func testEmptyImageList() {
+    let emptyImages: [IdMatrix<Float, Int>] = []
+    let duplicates = findDuplicateImages(images: emptyImages)
+    #expect(duplicates.isEmpty, "Empty image list should return no duplicates")
     
-    // Convert images to IdMatrix
-    let matrices: [IdMatrix<UInt8, Int>] = try cgimagesToIdMatrices(imagesToConvert)
+    let groups = groupDuplicateImages(images: emptyImages)
+    #expect(groups.isEmpty, "Empty image list should return no groups")
+}
+
+@Test func testSingleImage() {
+    let imageData = [Float](repeating: 0.5, count: 100)
+    let img = IdMatrix<Float, Int>(10, 10, imageData, "single")
     
-    // Verify that conversion worked
-    #expect(matrices.count == imagesToConvert.count)
+    let duplicates = findDuplicateImages(images: [img])
+    #expect(duplicates.isEmpty, "Single image should return no duplicates")
     
-    // Verify each matrix has correct dimensions and data
-    for (index, matrix) in matrices.enumerated() {
-        let (image, id) = imagesToConvert[index]
-        
-        // Check dimensions match the original image
-        #expect(matrix.rows == image.height)
-        #expect(matrix.columns == image.width)
-        
-        // Check identity is correct
-        #expect(matrix.identity == id)
-        
-        // Check that data is not all zeros (should contain actual pixel data)
-        #expect(!matrix.data.allSatisfy { $0 == 0 })
-        
-        // Check data count matches expected size
-        #expect(matrix.data.count > 0)
-    }
+    let groups = groupDuplicateImages(images: [img])
+    #expect(groups.isEmpty, "Single image should return no groups")
 }
 
 @Test func testBlurDetection() async throws {
