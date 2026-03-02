@@ -5,8 +5,11 @@
 //  Created by William Norland on 2026-01-26.
 //
 
-import ImageIO
 import Foundation
+
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 public class Matrix<T: Numeric, D: Numeric> {
     let rows: D
@@ -43,6 +46,7 @@ public class IdMatrix<T: Numeric, D: Numeric>: Matrix<T, D> {
 /// - Throws: An error if any image is not in monochrome/grayscale color space, missing required data, or has invalid dimensions
 ///
 /// - Note: The pixel data is extracted row by row and stored in the matrix's data array
+#if canImport(CoreGraphics)
 public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, String)]) throws -> [IdMatrix<T, D>] {
     var matrices: [IdMatrix<T, D>] = []
     
@@ -95,3 +99,4 @@ public func cgimagesToIdMatrices<T: Numeric, D: Numeric>(_ cgImages: [(CGImage, 
     
     return matrices
 }
+#endif

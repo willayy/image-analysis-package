@@ -6,9 +6,9 @@
 //
 
 import Foundation
-import ImageIO
 
-@available(macOS 13.0, *)
+#if canImport(ImageIO)
+import ImageIO
 public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) throws -> [CGImage] {
     
     // Start a file manager
@@ -35,7 +35,7 @@ public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) throws -> [
     // Load batch
     let imageBatch = try urlBatch.compactMap { imagePath -> CGImage? in
         
-        let imageURL = from.appending(path: imagePath)
+        let imageURL = from.appendingPathComponent(imagePath)
         
         guard let source = CGImageSourceCreateWithURL(imageURL as CFURL, options) else {
             throw NSError(domain: "ImageAnalysis", code: 1002, userInfo: [NSLocalizedDescriptionKey : "Failed to create image source for: \(imageURL)"])
@@ -49,3 +49,4 @@ public func batchLoadImages(from: URL, fromIndex: Int, toIndex: Int) throws -> [
     
     return imageBatch
 }
+#endif

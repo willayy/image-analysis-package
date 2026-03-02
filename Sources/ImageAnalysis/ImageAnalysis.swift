@@ -21,7 +21,7 @@ public func laplacianVariance(images: [IdMatrix<Float, Int>]) -> [(IdMatrix<Floa
     let maxPixels = 48_000_000
     var inputBuffer = vImage_Buffer(
         data: UnsafeMutablePointer<Float>.allocate(
-            capacity: MemoryLayout<Float>.size * maxPixels // n amount of floats, where n is the number of pixels in the image
+            capacity: maxPixels
         ),
         height: vImagePixelCount(0),    // Set height to 0 initially
         width: vImagePixelCount(0),     // Set width to 0 initially
@@ -29,7 +29,7 @@ public func laplacianVariance(images: [IdMatrix<Float, Int>]) -> [(IdMatrix<Floa
     )
     var outputBuffer = vImage_Buffer(
         data: UnsafeMutablePointer<Float>.allocate(
-            capacity: MemoryLayout<Float>.size * maxPixels
+            capacity: maxPixels
         ),
         height: vImagePixelCount(0),
         width: vImagePixelCount(0),
@@ -51,6 +51,10 @@ public func laplacianVariance(images: [IdMatrix<Float, Int>]) -> [(IdMatrix<Floa
         inputBuffer.height = vImagePixelCount(image.rows)
         inputBuffer.width = vImagePixelCount(image.columns)
         inputBuffer.rowBytes = MemoryLayout<Float>.stride * image.columns
+        
+        outputBuffer.height = vImagePixelCount(image.rows)
+        outputBuffer.width = vImagePixelCount(image.columns)
+        outputBuffer.rowBytes = MemoryLayout<Float>.stride * image.columns
         
         // Transform pixels by convolving the image matrix with the laplacian
         let error = vImageConvolve_PlanarF(

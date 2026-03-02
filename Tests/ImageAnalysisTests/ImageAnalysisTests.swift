@@ -1,9 +1,8 @@
 import Testing
 import Foundation
 @testable import ImageAnalysis
-import ImageIO
 
-
+#if canImport(ImageIO)
 nonisolated(unsafe) var blurredImages: [CGImage]? = nil
 nonisolated(unsafe) var sharpImages: [CGImage]? = nil
 
@@ -18,12 +17,12 @@ nonisolated(unsafe) var sharpImages: [CGImage]? = nil
     let blurredImageFolderURL = rootURL.appendingPathComponent("blurred")
     let sharpImageFolderURL = rootURL.appendingPathComponent("sharp")
     
-    blurredImages = batchLoadImages(
+    blurredImages = try batchLoadImages(
         from: blurredImageFolderURL,
         fromIndex: 0,
         toIndex: 5
     )
-    sharpImages = batchLoadImages(
+    sharpImages = try batchLoadImages(
         from: sharpImageFolderURL,
         fromIndex: 0,
         toIndex: 5
@@ -84,7 +83,9 @@ private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix
     
     return IdMatrix<Float, Int>(Int(height), Int(width), floatData, identity)
 }
+#endif
 
+#if canImport(Accelerate) && canImport(ImageIO)
 @Test func testDuplicateImageDetection() async throws {
     // Load test images first
     guard let rootURL = Bundle.module.url(
@@ -143,7 +144,9 @@ private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix
                 "Results should be sorted by similarity in descending order")
     }
 }
+#endif
 
+#if canImport(Accelerate)
 @Test func testGroupDuplicateImages() async throws {
     // Create some simple test images with known characteristics
     let size = 100
@@ -205,11 +208,6 @@ private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix
     
     let groups = groupDuplicateImages(images: [img])
     #expect(groups.isEmpty, "Single image should return no groups")
-}
-
-@Test func testBlurDetection() async throws {
-    
-    
 }
 
 // MARK: - Laplacian Variance Tests
@@ -370,3 +368,4 @@ private func cgImageToIdMatrix(_ cgImage: CGImage, identity: String) -> IdMatrix
     #expect(result[0].0.identity == "gradient-10x10")
     #expect(result[0].1 >= 0.0)
 }
+#endif
